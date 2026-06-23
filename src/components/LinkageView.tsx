@@ -40,6 +40,7 @@ interface Props {
   calibrating: boolean;
   calibrationFirst: XY | null;
   onMovePoint: (id: string, x: number, y: number) => void;
+  onDragRearAxle: (x: number) => void;
   onSelect: (id: string | null) => void;
   onGrabStart: () => void;
   onGrabEnd: () => void;
@@ -77,7 +78,7 @@ export default function LinkageView(props: Props) {
   const {
     design, sweep, metrics, frameIndex, selectedId, snap, gridSize, showInstantCentre,
     mode, tool, linkAnchor, trace, calibrating, calibrationFirst,
-    onMovePoint, onSelect, onGrabStart, onGrabEnd,
+    onMovePoint, onDragRearAxle, onSelect, onGrabStart, onGrabEnd,
     onAddPivot, onLinkPivots, onDeletePivot, onDeleteLink, onSetLinkAnchor, onCalibrationClick,
   } = props;
 
@@ -172,6 +173,9 @@ export default function LinkageView(props: Props) {
   const DRAG_THRESHOLD = 4;
   function applyMove(e: ReactPointerEvent, id: string) {
     const w = snapWorld(pointerToWorld(e));
+    // In Build mode the rear axle is grounded: drag only sets its x (the
+    // wheelbase); its height is locked to the rear tyre radius.
+    if (buildMode && id === design.axleId) { onDragRearAxle(w.x); return; }
     onMovePoint(id, w.x, w.y);
   }
   function selectDown(e: ReactPointerEvent, id: string) {

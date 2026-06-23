@@ -75,6 +75,9 @@ interface AppState {
   // tune-mode design edits
   setDesign: (d: Design, opts?: { persist?: boolean }) => void;
   updatePoint: (id: string, x: number, y: number) => void;
+  /** Build-mode rear-axle move: x sets the wheelbase (front stays put), y is
+   * locked to the rear tyre radius so the rear wheel always touches the ground. */
+  dragRearAxle: (x: number) => void;
   setShockStroke: (stroke: number) => void;
   setMetricInputs: (patch: Partial<Design['metrics']>) => void;
 
@@ -171,6 +174,24 @@ export const useStore = create<AppState>((set, get) => {
       persist(d);
     },
 
+    dragRearAxle: (x) => {
+      const cur = get().design;
+      const axle = cur.points.find((p) => p.id === cur.axleId);
+      if (!axle) return;
+      const delta = x - axle.x;
+      const d = cloneDesign(cur);
+      const a = d.points.find((p) => p.id === d.axleId)!;
+      a.x = x;
+      a.y = d.metrics.rearTyreRadius; // rear wheel sits on the ground
+      // Keep the (calibrated) front axle fixed: front x = axle.x − wheelbase, so
+      // moving the axle by delta moves the wheelbase by the same delta.
+      d.metrics = { ...d.metrics, wheelbase: Math.max(1, d.metrics.wheelbase + delta), touched: true };
+      const d2 = recomputeEyeToEye(d);
+      if (!get().dragging) set({ past: [...get().past, cur].slice(-HISTORY_CAP), future: [] });
+      set({ design: d2 });
+      persist(d2);
+    },
+
     setShockStroke: (stroke) => {
       const d = cloneDesign(get().design);
       d.shock.stroke = Math.max(5, stroke);
@@ -188,8 +209,15 @@ export const useStore = create<AppState>((set, get) => {
       m.rearTyreRadius = Math.max(1, m.rearTyreRadius);
       m.frontTyreRadius = Math.max(1, m.frontTyreRadius);
       d.metrics = m;
-      set({ design: d });
-      persist(d);
+      // The rear axle sits one tyre-radius above the ground, so a wheel-size
+      // change re-grounds it (keeps the rear wheel touching the ground line).
+      if (patch.rearTyreRadius !== undefined) {
+        const a = d.points.find((p) => p.id === d.axleId);
+        if (a) a.y = m.rearTyreRadius;
+      }
+      const d2 = recomputeEyeToEye(d);
+      set({ design: d2 });
+      persist(d2);
     },
 
     selectPoint: (id) => set({ selectedId: id }),

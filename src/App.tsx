@@ -37,7 +37,7 @@ export default function App() {
   const calibrationFirst = useStore((s) => s.calibrationFirst);
 
   const {
-    setDesign, updatePoint, setShockStroke, setMetricInputs, selectPoint,
+    setDesign, updatePoint, dragRearAxle, setShockStroke, setMetricInputs, selectPoint,
     setSnap, setGridSize, setPlaying, setAnimPos, setActiveMetric, setShowInstantCentre,
     setDragging, addPivot, addLinkBetween, removePivot, removeLinkById, setLinkAnchor,
     addCalibrationClick, undo, redo,
@@ -149,6 +149,7 @@ export default function App() {
             calibrating={calibrating}
             calibrationFirst={calibrationFirst}
             onMovePoint={updatePoint}
+            onDragRearAxle={dragRearAxle}
             onSelect={selectPoint}
             onGrabStart={() => { setPlaying(false); setAnimPos(0); setDragging(true); }}
             onGrabEnd={() => setDragging(false)}
