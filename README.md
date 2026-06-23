@@ -36,6 +36,13 @@ No account. No backend. Works on a phone. Works offline once loaded.
   [BiKinematics](https://github.com/mark-bak/BiKinematics) side-profile traces
   and converts them automatically (units, axes, gearing and all), so any bike
   someone has digitised drops straight in as a — clearly-flagged — estimate.
+- **Build a whole new linkage** in *Build* mode — a distinct, blueprint-styled
+  topology editor. Add and link pivots, assign roles (axle, bottom bracket,
+  shock), and watch a live degrees-of-freedom readout until you have a solvable
+  1-DOF mechanism, at which point the metrics light up. You can also **load a
+  bike photo and trace the pivots over it**, calibrating the scale against a
+  known length (the result is an estimate — photos have perspective error).
+  Undo/redo throughout (⌘/Ctrl-Z).
 
 ## The metrics, in plain English
 

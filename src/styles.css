@@ -27,6 +27,10 @@
   --oil: #f2a33c;
   --oil-press: #ffc06a;
 
+  /* build mode: a cool blueprint accent, distinct from the warm tune palette */
+  --blueprint: #4db6e6;
+  --blueprint-dim: #2b6f93;
+
   /* oscilloscope channels (each tied to a metric) */
   --c-leverage: #46d6b4;
   --c-axle: #ff6f61;
@@ -352,6 +356,96 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
   .panel { flex: 1; max-width: 580px; overflow-y: auto; }
 }
 @media (min-width: 1500px) { .stage { flex: 1.75; } }
+
+/* ── Build mode: blueprint reskin ─────────────────────────────────────────── */
+.app.build { --accent: var(--blueprint); }
+.app.build .stage { background: #0d1620; }
+.linkage.build {
+  background-color: #0c1521;
+  background-image:
+    linear-gradient(rgba(77,182,230,0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(77,182,230,0.10) 1px, transparent 1px),
+    linear-gradient(rgba(77,182,230,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(77,182,230,0.05) 1px, transparent 1px);
+  background-size: 96px 96px, 96px 96px, 24px 24px, 24px 24px;
+}
+.app.build .topbar { box-shadow: inset 0 2px 0 rgba(77,182,230,0.35), 0 1px 0 rgba(0,0,0,0.5); }
+
+/* link rubber-band + anchored pivot + role badges (build) */
+.rubber-band { stroke: var(--blueprint); stroke-width: 2; stroke-dasharray: 6 4; opacity: 0.85; }
+.pivot-anchored { stroke: var(--blueprint); stroke-width: 3; filter: drop-shadow(0 0 7px rgba(77,182,230,0.9)); }
+.role-badge { fill: var(--blueprint); font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.08em; paint-order: stroke; stroke: #0c1521; stroke-width: 4px; }
+.calib-dot { fill: var(--oil); stroke: #0c1521; stroke-width: 2; }
+.calib-label { fill: var(--oil); font-family: var(--mono); font-size: 13px; font-weight: 700; }
+
+/* ── Build toolbar ── */
+.buildbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mode-toggle { display: inline-flex; border: 1px solid var(--hair-2); border-radius: var(--radius); overflow: hidden; }
+.mode-btn {
+  font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 6px 13px; background: var(--bed); color: var(--graphite); border: none;
+}
+.mode-btn + .mode-btn { border-left: 1px solid var(--hair-2); }
+.mode-btn.active { background: var(--oil); color: #1c1206; font-weight: 600; }
+.mode-btn.build.active { background: var(--blueprint); color: #04121b; }
+
+.tool-palette, .undo-group { display: inline-flex; gap: 4px; }
+.tool-btn {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em;
+  padding: 6px 10px; background: var(--bed-2); border: 1px solid var(--hair-2); border-radius: var(--radius); color: var(--graphite);
+}
+.tool-btn:hover:not(:disabled) { color: var(--ink); border-color: var(--blueprint-dim); }
+.tool-btn.active { background: color-mix(in srgb, var(--blueprint) 18%, var(--bed-2)); border-color: var(--blueprint); color: var(--ink); }
+.tool-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* ── Topology panel ── */
+.topology-panel { display: flex; flex-direction: column; gap: 12px; }
+.dof-badge {
+  display: flex; align-items: center; gap: 11px; padding: 12px 14px;
+  border: 1px solid var(--hair-2); border-radius: var(--radius); background: var(--bed);
+}
+.dof-badge .led { width: 10px; height: 10px; border-radius: 50%; flex: none; box-shadow: 0 0 9px currentColor; background: currentColor; }
+.dof-ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.dof-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.dof-bad { color: var(--invalid); border-color: color-mix(in srgb, var(--invalid) 45%, transparent); }
+.dof-title { font-family: var(--mono); font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.dof-sub { font-size: 11.5px; color: var(--graphite); margin-top: 1px; }
+
+.notice {
+  margin: 0; padding: 9px 11px; font-size: 12px; color: #1c1206; font-weight: 500;
+  background: var(--warn); border-radius: var(--radius);
+}
+
+.topo-section { background: var(--bed); border: 1px solid var(--hair); border-radius: var(--radius); padding: 13px; }
+.topo-section h3 {
+  margin: 0 0 9px; font-family: var(--display); font-size: 12px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--graphite);
+  display: flex; align-items: center; gap: 8px;
+}
+.topo-section .count { font-family: var(--mono); font-size: 11px; color: var(--faint); border: 1px solid var(--hair-2); border-radius: 999px; padding: 0 7px; }
+.muted-note { font-size: 12px; color: var(--graphite); margin: 0; line-height: 1.5; }
+
+.role-name { font-size: 13px; margin-bottom: 9px; }
+.role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.role-grid .btn { font-size: 11.5px; padding: 8px 9px; text-align: left; }
+.btn-danger { color: var(--invalid); border-color: color-mix(in srgb, var(--invalid) 40%, var(--hair-2)); }
+.btn-danger:hover { background: rgba(255,98,87,0.12); border-color: var(--invalid); color: #fff; }
+.btn:disabled { opacity: 0.4; cursor: default; }
+
+.trace-controls { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.calib-row, .calib-active { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.calib-active { font-size: 12px; color: var(--blueprint); font-family: var(--mono); }
+
+.topo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 190px; overflow-y: auto; }
+.topo-list li { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 6px; font-size: 12.5px; }
+.topo-list li.sel { background: color-mix(in srgb, var(--blueprint) 16%, transparent); }
+.list-name { background: none; border: none; color: var(--ink); font: inherit; text-align: left; flex: 1; display: flex; align-items: center; gap: 7px; padding: 0; }
+.list-role { font-family: var(--mono); font-size: 10px; color: var(--blueprint); }
+.list-del { background: none; border: none; color: var(--faint); font-size: 13px; padding: 2px 5px; border-radius: 5px; }
+.list-del:hover { color: var(--invalid); background: rgba(255,98,87,0.1); }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.dot.fixed { background: var(--pivot-fixed); }
+.dot.free { background: var(--pivot-free); }
 
 /* ── Error boundary ── */
 .boundary { min-height: 100vh; display: grid; place-items: center; padding: 24px; }

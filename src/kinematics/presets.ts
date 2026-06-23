@@ -15,7 +15,8 @@
  * on realistic trail-bike numbers (~120–145 mm travel, leverage ~2.0–2.6).
  */
 
-import { distance, getPoint, type Design, type Link, type MetricInputs, type Point } from './model';
+import { type Design, type Link, type MetricInputs, type Point } from './model';
+import { recomputeEyeToEye } from './topology';
 
 function pt(id: string, name: string, x: number, y: number, fixed: boolean): Point {
   return { id, name, x, y, fixed };
@@ -47,8 +48,7 @@ function defaultMetrics(): MetricInputs {
 function finalize(design: Design): Design {
   // Keep full precision so the home configuration is exactly consistent with the
   // solver's first step (the UI rounds for display).
-  const eyeToEye = distance(getPoint(design, design.shock.frame), getPoint(design, design.shock.link));
-  return { ...design, shock: { ...design.shock, eyeToEye } };
+  return recomputeEyeToEye(design);
 }
 
 /**

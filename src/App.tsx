@@ -1,8 +1,8 @@
 /**
  * Top-level app: restores a design (from a share link, then localStorage, then a
  * preset), runs the travel animation loop, and lays out the linkage stage beside
- * the live metrics. Everything recomputes from the single source of truth — the
- * design — so the linkage and every plot stay in lockstep.
+ * the live metrics (Tune mode) or the topology editor (Build mode). Everything
+ * recomputes from the single source of truth — the design.
  */
 
 import { useEffect, useRef } from 'react';
@@ -16,6 +16,8 @@ import MetricsPanel from './components/MetricsPanel';
 import PivotEditor from './components/PivotEditor';
 import InputsPanel from './components/InputsPanel';
 import TopBar from './components/TopBar';
+import BuildToolbar from './components/BuildToolbar';
+import TopologyPanel from './components/TopologyPanel';
 
 export default function App() {
   const design = useStore((s) => s.design);
@@ -27,20 +29,26 @@ export default function App() {
   const activeMetric = useStore((s) => s.activeMetric);
   const showIC = useStore((s) => s.showInstantCentre);
   const dragging = useStore((s) => s.dragging);
+  const mode = useStore((s) => s.mode);
+  const tool = useStore((s) => s.tool);
+  const linkAnchor = useStore((s) => s.linkAnchor);
+  const trace = useStore((s) => s.trace);
+  const calibrating = useStore((s) => s.calibrating);
+  const calibrationFirst = useStore((s) => s.calibrationFirst);
 
   const {
     setDesign, updatePoint, setShockStroke, setMetricInputs, selectPoint,
     setSnap, setGridSize, setPlaying, setAnimPos, setActiveMetric, setShowInstantCentre,
-    setDragging,
+    setDragging, addPivot, addLinkBetween, removePivot, removeLinkById, setLinkAnchor,
+    addCalibrationClick, undo, redo,
   } = useStore.getState();
+
+  const buildMode = mode === 'build';
 
   // Restore a design once, on mount: share link wins, then last session.
   useEffect(() => {
     if (location.hash.startsWith('#d=')) {
       const fromHash = designFromHash(location.hash);
-      // Consume the hash either way: a valid one is persisted to localStorage
-      // (so later edits aren't clobbered on reload); an invalid one is dropped so
-      // it can't keep shadowing the saved session.
       history.replaceState(null, '', location.pathname + location.search);
       if (fromHash) {
         setDesign(fromHash, { persist: true });
@@ -52,8 +60,20 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // A coarser sweep keeps live dragging smooth on low-end phones; the full
-  // resolution returns the instant the drag ends.
+  // Undo/redo keyboard shortcuts (Build mode).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.key.toLowerCase() !== 'z') return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      e.preventDefault();
+      if (e.shiftKey) redo(); else undo();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [undo, redo]);
+
   const { sweep, metrics } = useDerived(design, dragging ? 70 : DEFAULT_STEPS);
   const frameIndex = frameIndexFor(sweep, animPos);
 
@@ -93,7 +113,7 @@ export default function App() {
   const statusLabel = status === 'bad' ? 'Unsolvable' : status === 'warn' ? 'Binds early' : 'Solved';
 
   return (
-    <div className="app">
+    <div className={`app ${buildMode ? 'build' : ''}`}>
       <TopBar
         design={design}
         onLoad={(d) => { setDesign(d); setAnimPos(0); setPlaying(false); }}
@@ -105,11 +125,13 @@ export default function App() {
       <main className="layout">
         <section className="stage">
           <div className="stage-toolbar">
-            <span className="eyebrow">Specimen · drag any pivot</span>
-            <label className="check">
-              <input type="checkbox" checked={showIC} onChange={(e) => setShowInstantCentre(e.target.checked)} />
-              Instant centre
-            </label>
+            <BuildToolbar />
+            {!buildMode && (
+              <label className="check">
+                <input type="checkbox" checked={showIC} onChange={(e) => setShowInstantCentre(e.target.checked)} />
+                Instant centre
+              </label>
+            )}
           </div>
           <LinkageView
             design={design}
@@ -119,42 +141,65 @@ export default function App() {
             selectedId={selectedId}
             snap={snap}
             gridSize={gridSize}
-            showInstantCentre={showIC}
+            showInstantCentre={showIC && !buildMode}
+            mode={mode}
+            tool={tool}
+            linkAnchor={linkAnchor}
+            trace={trace}
+            calibrating={calibrating}
+            calibrationFirst={calibrationFirst}
             onMovePoint={updatePoint}
             onSelect={selectPoint}
             onGrabStart={() => { setPlaying(false); setAnimPos(0); setDragging(true); }}
             onGrabEnd={() => setDragging(false)}
+            onAddPivot={addPivot}
+            onLinkPivots={addLinkBetween}
+            onDeletePivot={removePivot}
+            onDeleteLink={removeLinkById}
+            onSetLinkAnchor={setLinkAnchor}
+            onCalibrationClick={addCalibrationClick}
           />
-          <AnimationBar
-            playing={playing}
-            animPos={animPos}
-            travelMm={travelMm}
-            totalTravelMm={totalTravel}
-            onPlayToggle={() => setPlaying(!playing)}
-            onScrub={(t) => { setPlaying(false); setAnimPos(t); }}
-          />
+          {!buildMode && (
+            <AnimationBar
+              playing={playing}
+              animPos={animPos}
+              travelMm={travelMm}
+              totalTravelMm={totalTravel}
+              onPlayToggle={() => setPlaying(!playing)}
+              onScrub={(t) => { setPlaying(false); setAnimPos(t); }}
+            />
+          )}
         </section>
 
         <aside className="panel">
-          <span className="eyebrow" style={{ padding: '0 2px' }}>Readout</span>
-          <MetricsPanel
-            metrics={metrics}
-            design={design}
-            activeMetric={activeMetric}
-            highlightIndex={frameIndex}
-            onSelectMetric={setActiveMetric}
-          />
-          <PivotEditor
-            design={design}
-            selectedId={selectedId}
-            snap={snap}
-            gridSize={gridSize}
-            onMovePoint={updatePoint}
-            onSelect={selectPoint}
-            onSnap={setSnap}
-            onGridSize={setGridSize}
-            onShockStroke={setShockStroke}
-          />
+          {buildMode ? (
+            <>
+              <span className="eyebrow" style={{ padding: '0 2px' }}>Build</span>
+              <TopologyPanel design={design} sweep={sweep} />
+            </>
+          ) : (
+            <>
+              <span className="eyebrow" style={{ padding: '0 2px' }}>Readout</span>
+              <MetricsPanel
+                metrics={metrics}
+                design={design}
+                activeMetric={activeMetric}
+                highlightIndex={frameIndex}
+                onSelectMetric={setActiveMetric}
+              />
+              <PivotEditor
+                design={design}
+                selectedId={selectedId}
+                snap={snap}
+                gridSize={gridSize}
+                onMovePoint={updatePoint}
+                onSelect={selectPoint}
+                onSnap={setSnap}
+                onGridSize={setGridSize}
+                onShockStroke={setShockStroke}
+              />
+            </>
+          )}
           <InputsPanel design={design} onChange={setMetricInputs} />
           <footer className="foot">
             <span>Free · open source · no account · works offline.</span>
