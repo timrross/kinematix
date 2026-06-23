@@ -7,7 +7,7 @@
  * grab is then exactly where it lives in the design you are editing.
  */
 
-import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useMemo, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import type { Design } from '../kinematics/model';
 import type { SweepResult } from '../kinematics/sweep';
 import type { XY } from '../kinematics/solver';
@@ -75,7 +75,11 @@ export default function LinkageView({
   onGrabEnd,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [dragId, setDragId] = useState<string | null>(null);
+  // The pivot currently being dragged. Dragging only begins on an *already
+  // selected* pivot, and only once the pointer has actually moved past a small
+  // threshold — so a click selects without ever nudging the geometry.
+  const dragRef = useRef<string | null>(null);
+  const pendingRef = useRef<{ id: string; x: number; y: number } | null>(null);
 
   const valid = sweep.structurallyValid && sweep.frames.length > 0;
   const lastValid = sweep.validTo >= 0 ? sweep.validTo : 0;
@@ -121,34 +125,58 @@ export default function LinkageView({
     return screenToWorld(transform, { x: vx, y: vy });
   }
 
-  function handlePivotDown(e: ReactPointerEvent, id: string) {
-    e.preventDefault();
-    // Pointer capture keeps move events flowing if the finger/cursor leaves the
-    // small handle. It can throw in edge cases (no active pointer); never let
-    // that abort the drag.
-    try { (e.target as Element).setPointerCapture(e.pointerId); } catch { /* ignore */ }
-    onGrabStart();
-    onSelect(id);
-    setDragId(id);
-  }
+  /** Move pixels before a press on a selected pivot is treated as a drag. */
+  const DRAG_THRESHOLD = 4;
 
-  function handleMove(e: ReactPointerEvent) {
-    if (!dragId) return;
+  function applyMove(e: ReactPointerEvent, id: string) {
     let w = pointerToWorld(e);
     if (snap) {
       w = { x: Math.round(w.x / gridSize) * gridSize, y: Math.round(w.y / gridSize) * gridSize };
     } else {
       w = { x: Math.round(w.x * 10) / 10, y: Math.round(w.y * 10) / 10 };
     }
-    onMovePoint(dragId, w.x, w.y);
+    onMovePoint(id, w.x, w.y);
+  }
+
+  function handlePivotDown(e: ReactPointerEvent, id: string) {
+    e.preventDefault();
+    if (id !== selectedId) {
+      // First touch: just select it. No drag is armed, so the layout can't move.
+      onSelect(id);
+      return;
+    }
+    // Already selected: arm a drag that commits once the pointer actually moves.
+    // Pointer capture keeps move events flowing if the finger leaves the handle.
+    try { (e.target as Element).setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    pendingRef.current = { id, x: e.clientX, y: e.clientY };
+  }
+
+  function handleMove(e: ReactPointerEvent) {
+    if (dragRef.current) {
+      applyMove(e, dragRef.current);
+      return;
+    }
+    const pending = pendingRef.current;
+    if (pending) {
+      const moved = Math.hypot(e.clientX - pending.x, e.clientY - pending.y);
+      if (moved > DRAG_THRESHOLD) {
+        // Crossed the threshold — this is a real drag now.
+        dragRef.current = pending.id;
+        pendingRef.current = null;
+        onGrabStart();
+        applyMove(e, pending.id);
+      }
+    }
   }
 
   function handleUp(e: ReactPointerEvent) {
-    if (dragId) {
+    const wasDragging = dragRef.current !== null;
+    if (dragRef.current || pendingRef.current) {
       try { (e.target as Element).releasePointerCapture(e.pointerId); } catch { /* ignore */ }
-      onGrabEnd();
     }
-    setDragId(null);
+    dragRef.current = null;
+    pendingRef.current = null;
+    if (wasDragging) onGrabEnd();
   }
 
   // --- geometry to draw ---
@@ -267,7 +295,7 @@ export default function LinkageView({
               cx={s.x}
               cy={s.y}
               r={20}
-              className="pivot-hit"
+              className={`pivot-hit ${selected ? 'pivot-hit-selected' : ''}`}
               onPointerDown={(e) => handlePivotDown(e, p.id)}
             />
             <circle cx={s.x} cy={s.y} r={selected ? 9 : 7} className={cls} />

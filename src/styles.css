@@ -205,8 +205,12 @@ button { cursor: pointer; }
 .pivot-fixed { fill: var(--pivot-fixed); }
 .pivot-free { fill: var(--pivot-free); }
 .pivot-selected { stroke: #fff; stroke-width: 3; filter: drop-shadow(0 0 6px rgba(110,168,254,0.85)); }
-.pivot-hit { fill: transparent; cursor: grab; pointer-events: auto; }
-.pivot-hit:active { cursor: grabbing; }
+/* Unselected handles are clickable-to-select (pointer); the selected handle is
+   draggable (grab → grabbing). This matches the two-stage interaction: click to
+   select, then press-and-drag to move. */
+.pivot-hit { fill: transparent; cursor: pointer; pointer-events: auto; }
+.pivot-hit-selected { cursor: grab; }
+.pivot-hit-selected:active { cursor: grabbing; }
 .pivot-label { fill: var(--ink); font-family: var(--mono); font-size: 13px; font-weight: 500; paint-order: stroke; stroke: #15120d; stroke-width: 4px; }
 
 /* title block (drafting corner) */
