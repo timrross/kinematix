@@ -70,7 +70,6 @@ interface AppState {
   // --- photo tracing ---
   trace: TraceImage | null;
   calibrating: boolean;
-  calibrationRefMm: number;
   calibrationFirst: XY | null;
 
   // tune-mode design edits
@@ -109,7 +108,7 @@ interface AppState {
   loadTraceImage: (src: string, imgW: number, imgH: number) => void;
   setTraceOpacity: (o: number) => void;
   clearTrace: () => void;
-  startCalibration: (refMm: number) => void;
+  startCalibration: () => void;
   addCalibrationClick: (world: XY) => void;
   cancelCalibration: () => void;
 }
@@ -148,7 +147,6 @@ export const useStore = create<AppState>((set, get) => {
 
     trace: null,
     calibrating: false,
-    calibrationRefMm: 0,
     calibrationFirst: null,
 
     setDesign: (d, opts = { persist: true }) => {
@@ -266,14 +264,19 @@ export const useStore = create<AppState>((set, get) => {
       // Drive-side photos read rear-on-the-left, which is the higher world x, so
       // the photo's left edge (pixel column 0) maps to the HIGHER world x and
       // world x decreases as the pixel column increases. Place it spanning
-      // roughly the wheelbase, sitting above the ground; calibration refines it.
+      // roughly the wheelbase to start, then IMMEDIATELY begin front-wheel
+      // calibration — the first step is always positioning the photo.
       const { metrics, axleId, points } = get().design;
       const axle = points.find((p) => p.id === axleId);
       const worldW = metrics.wheelbase || 1240;
       const worldScale = worldW / imgW;
       const worldH = imgH * worldScale;
-      const originX = (axle ? axle.x : 0) + worldW * 0.05; // px0 (rear) just behind the rear axle
-      set({ trace: { src, imgW, imgH, worldScale, originX, originY: worldH, opacity: 0.55 } });
+      const originX = (axle ? axle.x : 0) + worldW * 0.05;
+      set({
+        trace: { src, imgW, imgH, worldScale, originX, originY: worldH, opacity: 0.55 },
+        calibrating: true,
+        calibrationFirst: null,
+      });
     },
     setTraceOpacity: (o) => {
       const t = get().trace;
@@ -281,27 +284,34 @@ export const useStore = create<AppState>((set, get) => {
     },
     clearTrace: () => set({ trace: null, calibrating: false, calibrationFirst: null }),
 
-    startCalibration: (refMm) =>
-      set({ calibrating: true, calibrationRefMm: refMm, calibrationFirst: null, tool: 'select' }),
+    /** Begin (or restart) front-wheel calibration: click the front axle, then the contact patch. */
+    startCalibration: () => set({ calibrating: true, calibrationFirst: null, tool: 'select' }),
     addCalibrationClick: (world) => {
-      const { calibrating, calibrationFirst, calibrationRefMm, trace } = get();
+      const { calibrating, calibrationFirst, trace } = get();
       if (!calibrating || !trace) return;
       if (!calibrationFirst) {
-        set({ calibrationFirst: world });
+        set({ calibrationFirst: world }); // first click = the front axle
         return;
       }
-      // Second click → rescale the image about the first reference point.
-      const a = calibrationFirst;
-      const b = world;
-      // World x decreases with pixel column (see loadTraceImage), so px = (originX - x)/scale.
+      // Second click = the front tyre's contact patch. The two are one tyre
+      // radius apart, which sets the scale; and we reposition the photo so its
+      // front axle lands exactly on the model's front axle.
       const toPx = (w: XY): XY => ({ x: (trace.originX - w.x) / trace.worldScale, y: (trace.originY - w.y) / trace.worldScale });
-      const pxA = toPx(a);
-      const pxB = toPx(b);
-      const newScale = calibrateScale(pxA, pxB, calibrationRefMm);
+      const pxAxle = toPx(calibrationFirst);
+      const pxPatch = toPx(world);
+      const newScale = calibrateScale(pxAxle, pxPatch, get().design.metrics.frontTyreRadius);
       if (newScale <= 0) { set({ calibrating: false, calibrationFirst: null }); return; }
-      // Keep reference point A fixed in world: originX = a.x + pxA.x·scale, originY = a.y + pxA.y·scale.
+      const { metrics, points, axleId } = get().design;
+      const axle = points.find((p) => p.id === axleId);
+      const frontAxleX = (axle ? axle.x : 0) - metrics.wheelbase; // model front-axle world x
       set({
-        trace: { ...trace, worldScale: newScale, originX: a.x + pxA.x * newScale, originY: a.y + pxA.y * newScale },
+        trace: {
+          ...trace,
+          worldScale: newScale,
+          // Place the photo so pxAxle maps to (frontAxleX, frontTyreRadius).
+          originX: frontAxleX + pxAxle.x * newScale,
+          originY: metrics.frontTyreRadius + pxAxle.y * newScale,
+        },
         calibrating: false,
         calibrationFirst: null,
         notice: null,

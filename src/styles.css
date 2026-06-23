@@ -435,6 +435,13 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 .trace-controls { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .calib-row, .calib-active { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .calib-active { font-size: 12px; color: var(--blueprint); font-family: var(--mono); }
+.calib-step {
+  flex-direction: column; align-items: stretch; gap: 7px;
+  padding: 11px; border: 1px solid var(--blueprint); border-radius: var(--radius);
+  background: color-mix(in srgb, var(--blueprint) 12%, var(--bed));
+}
+.calib-step strong { color: var(--ink); font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+.calib-step span { color: var(--ink); font-family: var(--display); font-size: 13px; line-height: 1.4; }
 
 .topo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 190px; overflow-y: auto; }
 .topo-list li { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 6px; font-size: 12.5px; }

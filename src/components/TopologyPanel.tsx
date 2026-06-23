@@ -27,7 +27,6 @@ export default function TopologyPanel({ design, sweep }: Props) {
   } = useStore.getState();
 
   const fileRef = useRef<HTMLInputElement>(null);
-  const refMmRef = useRef<HTMLInputElement>(null);
 
   const selected = design.points.find((p) => p.id === selectedId) ?? null;
   const status = dofStatus(design, sweep);
@@ -78,30 +77,26 @@ export default function TopologyPanel({ design, sweep }: Props) {
 
       <section className="topo-section">
         <h3>Trace from photo</h3>
-        <p className="muted-note">Photos have perspective error — calibrate against a known length; the result is an estimate.</p>
+        <p className="muted-note">Photos have perspective error — the result is an estimate. Use a drive-side profile shot (rear wheel on the left).</p>
         {!trace ? (
           <button className="btn" onClick={() => fileRef.current?.click()}>Load bike photo…</button>
         ) : (
           <div className="trace-controls">
+            {calibrating ? (
+              <div className="calib-active calib-step">
+                <strong>Position the photo ({calibrationFirst ? '2 / 2' : '1 / 2'})</strong>
+                <span>{calibrationFirst
+                  ? 'Now click the front tyre’s contact patch (where it meets the ground).'
+                  : 'Click the centre of the front axle on the photo.'}</span>
+                <button className="btn" onClick={cancelCalibration}>Cancel</button>
+              </div>
+            ) : (
+              <button className="btn" onClick={startCalibration}>Re-position (front wheel)</button>
+            )}
             <label className="field">
               <span>Photo opacity</span>
               <input type="range" min={0.1} max={1} step={0.05} value={trace.opacity} onChange={(e) => setTraceOpacity(parseFloat(e.target.value))} />
             </label>
-            {!calibrating ? (
-              <div className="calib-row">
-                <label className="field inline">
-                  <span>Reference</span>
-                  <input ref={refMmRef} type="number" defaultValue={design.metrics.wheelbase} style={{ width: 72 }} />
-                  <span className="unit">mm</span>
-                </label>
-                <button className="btn" onClick={() => startCalibration(parseFloat(refMmRef.current?.value || '0') || design.metrics.wheelbase)}>Set scale</button>
-              </div>
-            ) : (
-              <div className="calib-active">
-                <span>{calibrationFirst ? 'Now click the second point' : 'Click the first reference point (e.g. an axle)'}</span>
-                <button className="btn" onClick={cancelCalibration}>Cancel</button>
-              </div>
-            )}
             <button className="btn" onClick={clearTrace}>Remove photo</button>
           </div>
         )}
