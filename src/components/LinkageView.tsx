@@ -134,7 +134,16 @@ export default function LinkageView(props: Props) {
   const S = (p: XY) => worldToScreen(transform, p);
 
   function pointerToView(e: ReactPointerEvent): XY {
-    const rect = svgRef.current!.getBoundingClientRect();
+    const svg = svgRef.current!;
+    // Use the real screen→user-space matrix so the mapping is exact regardless
+    // of viewBox letterboxing (preserveAspectRatio) or any CSS scaling — a naive
+    // bounding-rect ratio is wrong whenever the rendered aspect ≠ the viewBox.
+    const ctm = svg.getScreenCTM();
+    if (ctm) {
+      const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse());
+      return { x: p.x, y: p.y };
+    }
+    const rect = svg.getBoundingClientRect();
     return { x: ((e.clientX - rect.left) / rect.width) * VIEW_W, y: ((e.clientY - rect.top) / rect.height) * VIEW_H };
   }
   function pointerToWorld(e: ReactPointerEvent): XY {
