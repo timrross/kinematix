@@ -267,11 +267,16 @@ export default function LinkageView(props: Props) {
     return null;
   };
 
-  // Image backdrop screen rect.
+  // Image backdrop screen rect — the bounding box of the world rect's corners,
+  // so it sits correctly (and un-mirrored) regardless of the x-flip.
   const traceRect = trace
     ? (() => {
-        const tl = S({ x: trace.originX, y: trace.originY });
-        return { x: tl.x, y: tl.y, w: trace.imgW * trace.worldScale * transform.scale, h: trace.imgH * trace.worldScale * transform.scale };
+        const wW = trace.imgW * trace.worldScale;
+        const wH = trace.imgH * trace.worldScale;
+        // World x decreases across the photo (px0 = left = rear at the higher x).
+        const c1 = S({ x: trace.originX, y: trace.originY });
+        const c2 = S({ x: trace.originX - wW, y: trace.originY - wH });
+        return { x: Math.min(c1.x, c2.x), y: Math.min(c1.y, c2.y), w: Math.abs(c2.x - c1.x), h: Math.abs(c2.y - c1.y) };
       })()
     : null;
 

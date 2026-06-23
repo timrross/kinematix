@@ -263,17 +263,17 @@ export const useStore = create<AppState>((set, get) => {
 
     // --- tracing ---
     loadTraceImage: (src, imgW, imgH) => {
-      // Place the photo spanning roughly the wheelbase, sitting above the ground,
-      // centred over the bike. Scale is then refined by calibration.
+      // Drive-side photos read rear-on-the-left, which is the higher world x, so
+      // the photo's left edge (pixel column 0) maps to the HIGHER world x and
+      // world x decreases as the pixel column increases. Place it spanning
+      // roughly the wheelbase, sitting above the ground; calibration refines it.
       const { metrics, axleId, points } = get().design;
       const axle = points.find((p) => p.id === axleId);
       const worldW = metrics.wheelbase || 1240;
       const worldScale = worldW / imgW;
       const worldH = imgH * worldScale;
-      const centreX = axle ? axle.x - worldW / 2 : 0;
-      set({
-        trace: { src, imgW, imgH, worldScale, originX: centreX - worldW / 2, originY: worldH, opacity: 0.55 },
-      });
+      const originX = (axle ? axle.x : 0) + worldW * 0.05; // px0 (rear) just behind the rear axle
+      set({ trace: { src, imgW, imgH, worldScale, originX, originY: worldH, opacity: 0.55 } });
     },
     setTraceOpacity: (o) => {
       const t = get().trace;
@@ -293,13 +293,15 @@ export const useStore = create<AppState>((set, get) => {
       // Second click → rescale the image about the first reference point.
       const a = calibrationFirst;
       const b = world;
-      const toPx = (w: XY): XY => ({ x: (w.x - trace.originX) / trace.worldScale, y: (trace.originY - w.y) / trace.worldScale });
+      // World x decreases with pixel column (see loadTraceImage), so px = (originX - x)/scale.
+      const toPx = (w: XY): XY => ({ x: (trace.originX - w.x) / trace.worldScale, y: (trace.originY - w.y) / trace.worldScale });
       const pxA = toPx(a);
       const pxB = toPx(b);
       const newScale = calibrateScale(pxA, pxB, calibrationRefMm);
       if (newScale <= 0) { set({ calibrating: false, calibrationFirst: null }); return; }
+      // Keep reference point A fixed in world: originX = a.x + pxA.x·scale, originY = a.y + pxA.y·scale.
       set({
-        trace: { ...trace, worldScale: newScale, originX: a.x - pxA.x * newScale, originY: a.y + pxA.y * newScale },
+        trace: { ...trace, worldScale: newScale, originX: a.x + pxA.x * newScale, originY: a.y + pxA.y * newScale },
         calibrating: false,
         calibrationFirst: null,
         notice: null,
