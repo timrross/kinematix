@@ -283,7 +283,7 @@ export default function LinkageView(props: Props) {
   return (
     <svg
       ref={svgRef}
-      className={`linkage ${buildMode ? 'build' : ''}`}
+      className={`linkage ${buildMode ? 'build' : ''} ${calibrating ? 'calibrating' : ''}`}
       viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
       onPointerMove={onMove}
       onPointerUp={onUp}

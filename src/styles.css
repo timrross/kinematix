@@ -215,6 +215,12 @@ button { cursor: pointer; }
 .pivot-hit { fill: transparent; cursor: pointer; pointer-events: auto; }
 .pivot-hit-selected { cursor: grab; }
 .pivot-hit-selected:active { cursor: grabbing; }
+
+/* While picking points on a photo, only the background captures clicks — the
+   wheels, hubs and pivot targets must not swallow a pick that lands over them.
+   (The background tap rect keeps its inline pointer-events:auto.) */
+.linkage.calibrating circle { pointer-events: none; }
+.linkage.calibrating { cursor: crosshair; }
 .pivot-label { fill: var(--ink); font-family: var(--mono); font-size: 13px; font-weight: 500; paint-order: stroke; stroke: #15120d; stroke-width: 4px; }
 
 /* title block (drafting corner) */
