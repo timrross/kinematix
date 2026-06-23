@@ -87,6 +87,11 @@ export interface Design {
   /** Schema version, for forward-compatible save files / share links. */
   version: 1;
   name: string;
+  /**
+   * Optional provenance / disclaimer shown in the UI — e.g. for designs derived
+   * from a reverse-engineered estimate of a real bike.
+   */
+  note?: string;
   points: Point[];
   links: Link[];
   shock: Shock;

@@ -19,9 +19,14 @@ No account. No backend. Works on a phone. Works offline once loaded.
   the axle trace its path.
 - **See the instant centre** — the invisible point the rear end pivots about —
   move as the suspension cycles. This is the thing that makes four-bars click.
-- **Start from a preset**: a single pivot, a Horst-link four-bar, or a short-link
-  (VPP-style) four-bar. These are generic illustrations of layout *types*, not
-  models of specific branded bikes.
+- **Start from a preset**: a single pivot, a Horst-link four-bar, and a
+  short-link (VPP-style) four-bar — generic illustrations of layout *types* — plus
+  one hand-digitised real bike (a 170 mm Horst-link enduro). The real one is a
+  **reverse-engineered estimate** derived from a publicly-shared side-profile
+  trace, not official manufacturer geometry; it's labelled as such in the app.
+  Reassuringly, it converges across full travel and lands on realistic numbers
+  (~170 mm travel, ~90% anti-squat at sag), which is a nice real-world check on
+  the solver.
 - **Tune precisely** with snap-to-grid and numeric coordinate entry.
 - **Share your creation** with a link — the whole design rides along in the URL,
   no server involved — or save/load it as a JSON file. Your last session is

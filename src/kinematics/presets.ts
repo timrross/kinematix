@@ -164,6 +164,63 @@ export function shortLink(): Design {
   });
 }
 
+/**
+ * A real bike, hand-digitised: a 170 mm Horst-link enduro (Vitus Sommet).
+ * Topology — chainstay crank (main pivot → Horst pivot), an axle-carrying
+ * seatstay coupler, and a rocker that drives the shock — is the classic
+ * four-bar, so it maps straight onto our model.
+ *
+ * Provenance: the pivot positions are a *reverse-engineered estimate*, derived
+ * by converting a publicly-shared side-profile trace (mark-bak/BiKinematics on
+ * GitHub) from pixels to millimetres, mirroring to our rear-positive x
+ * convention, and grounding the rear axle at the 29" tyre radius. It is not
+ * official manufacturer data and is not affiliated with or endorsed by Vitus.
+ * In our solver it converges across full travel and lands on realistic numbers
+ * (~170 mm travel, leverage ~3.3→2.4, ~90% anti-squat at sag), which is a nice
+ * real-world cross-check of the whole pipeline.
+ */
+export function vitusSommet(): Design {
+  return finalize({
+    version: 1,
+    name: 'Vitus Sommet (estimate)',
+    note: 'Reverse-engineered estimate of a 170 mm Horst-link enduro — not official geometry. Pivots derived from a public side-profile trace (mark-bak/BiKinematics).',
+    points: [
+      pt('bb', 'Bottom bracket', 0, 345.1, true),
+      pt('mainPivot', 'Main pivot', 8, 391.8, true),
+      pt('upperPivot', 'Rocker pivot', -26.8, 595.3, true),
+      pt('shockFrame', 'Shock frame mount', -52.2, 436, true),
+      pt('horst', 'Horst pivot', 382.7, 358.6, false),
+      pt('seatstay', 'Seatstay junction', 78.9, 606.7, false),
+      pt('axle', 'Rear axle', 445.5, 367, false),
+      pt('shockRocker', 'Rocker arm', -73.6, 640.7, false),
+    ],
+    links: [
+      // Chainstay crank.
+      link('l-main-horst', 'mainPivot', 'horst'),
+      // Seatstay/dropout body carrying the axle (rigid triangle).
+      link('l-horst-axle', 'horst', 'axle'),
+      link('l-axle-seatstay', 'axle', 'seatstay'),
+      link('l-seatstay-horst', 'seatstay', 'horst'),
+      // Rocker (rigid triangle about the upper pivot) driving the shock.
+      link('l-upper-seatstay', 'upperPivot', 'seatstay'),
+      link('l-upper-rocker', 'upperPivot', 'shockRocker'),
+      link('l-seatstay-rocker', 'seatstay', 'shockRocker'),
+    ],
+    shock: { frame: 'shockFrame', link: 'shockRocker', eyeToEye: 0, stroke: 62.5 },
+    axleId: 'axle',
+    bbId: 'bb',
+    metrics: {
+      chainringTeeth: 30,
+      cogTeeth: 52,
+      cogHeight: 1100,
+      wheelbase: 1255,
+      rearTyreRadius: 367,
+      frontTyreRadius: 367,
+      touched: true,
+    },
+  });
+}
+
 export interface PresetEntry {
   id: string;
   label: string;
@@ -174,6 +231,7 @@ export const PRESETS: PresetEntry[] = [
   { id: 'single-pivot', label: 'Single pivot', build: singlePivot },
   { id: 'horst-link', label: 'Horst-link four-bar', build: horstLink },
   { id: 'short-link', label: 'Short-link (VPP-style)', build: shortLink },
+  { id: 'vitus-sommet', label: 'Vitus Sommet 170 (real, estimate)', build: vitusSommet },
 ];
 
 export function defaultDesign(): Design {

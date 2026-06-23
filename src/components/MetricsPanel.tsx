@@ -71,6 +71,8 @@ export default function MetricsPanel({ metrics, design, activeMetric, highlightI
       </div>
 
       <StatStrip metrics={metrics} />
+
+      {design.note && <p className="provenance">ⓘ {design.note}</p>}
     </div>
   );
 }

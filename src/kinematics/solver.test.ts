@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { singlePivot, horstLink, shortLink } from './presets';
+import { singlePivot, horstLink, shortLink, vitusSommet } from './presets';
 import { solveSweep } from './sweep';
 import { buildSystem, homeSeed, solveStep } from './solver';
 import { distance } from './model';
@@ -51,7 +51,7 @@ function nearest(
 
 describe('constraint solver — structural validity', () => {
   it('all presets are well-formed 1-DOF mechanisms (mobility 0)', () => {
-    for (const build of [singlePivot, horstLink, shortLink]) {
+    for (const build of [singlePivot, horstLink, shortLink, vitusSommet]) {
       const sys = buildSystem(build());
       expect(sys.mobility).toBe(0);
     }
@@ -60,7 +60,7 @@ describe('constraint solver — structural validity', () => {
 
 describe('constraint solver — home configuration', () => {
   it('reproduces the drawn geometry at full extension with ~zero residual', () => {
-    for (const build of [singlePivot, horstLink, shortLink]) {
+    for (const build of [singlePivot, horstLink, shortLink, vitusSommet]) {
       const design = build();
       const sys = buildSystem(design);
       const sol = solveStep(sys, design.shock.eyeToEye, homeSeed(sys));
@@ -76,7 +76,7 @@ describe('constraint solver — home configuration', () => {
 
 describe('constraint solver — full travel sweep', () => {
   it('converges across the entire travel for all presets', () => {
-    for (const build of [singlePivot, horstLink, shortLink]) {
+    for (const build of [singlePivot, horstLink, shortLink, vitusSommet]) {
       const res = solveSweep(build(), 150);
       expect(res.structurallyValid).toBe(true);
       expect(res.fullyConverged).toBe(true);
