@@ -221,6 +221,37 @@ export function vitusSommet(): Design {
   });
 }
 
+/**
+ * A clean, minimal single pivot to start a design from scratch. The solver and
+ * model handle arbitrary topologies, but the UI edits an existing skeleton
+ * (drag pivots, type coordinates) rather than adding/removing members — so a
+ * "fresh" design starts from the simplest valid mechanism and is shaped from
+ * there. (Adding/removing pivots and links to invent a brand-new topology is a
+ * planned editor feature.)
+ */
+export function newDesign(): Design {
+  return finalize({
+    version: 1,
+    name: 'My design',
+    points: [
+      pt('bb', 'Bottom bracket', 0, 340, true),
+      pt('pivot', 'Main pivot', 15, 375, true),
+      pt('shockFrame', 'Shock frame mount', -10, 650, true),
+      pt('axle', 'Rear axle', 445, 365, false),
+      pt('shockMount', 'Shock link mount', 120, 510, false),
+    ],
+    links: [
+      link('l-pivot-axle', 'pivot', 'axle'),
+      link('l-pivot-sm', 'pivot', 'shockMount'),
+      link('l-axle-sm', 'axle', 'shockMount'),
+    ],
+    shock: { frame: 'shockFrame', link: 'shockMount', eyeToEye: 0, stroke: 55 },
+    axleId: 'axle',
+    bbId: 'bb',
+    metrics: defaultMetrics(),
+  });
+}
+
 export interface PresetEntry {
   id: string;
   label: string;

@@ -6,8 +6,9 @@
 
 import { useRef, useState } from 'react';
 import type { Design } from '../kinematics/model';
-import { PRESETS } from '../kinematics/presets';
-import { designToHash, designToJson, jsonToDesign } from '../persistence/serialize';
+import { PRESETS, newDesign } from '../kinematics/presets';
+import { designToHash, designToJson } from '../persistence/serialize';
+import { parseAnyDesign } from '../persistence/bikinematics';
 
 interface Props {
   design: Design;
@@ -58,8 +59,9 @@ export default function TopBar({ design, onLoad, travelMm, status, statusLabel }
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        onLoad(jsonToDesign(String(reader.result)));
-        flash('Design loaded');
+        const design = parseAnyDesign(String(reader.result));
+        onLoad(design);
+        flash(design.note?.startsWith('Imported') ? 'Imported trace' : 'Design loaded');
       } catch (err) {
         flash(`Could not load file: ${(err as Error).message}`);
       }
@@ -98,6 +100,7 @@ export default function TopBar({ design, onLoad, travelMm, status, statusLabel }
       </div>
 
       <div className="actions">
+        <button onClick={() => onLoad(newDesign())} className="btn" title="Start a fresh single-pivot design">New</button>
         <label className="field inline preset-field">
           <span className="sr-only">Preset</span>
           <select

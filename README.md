@@ -31,6 +31,11 @@ No account. No backend. Works on a phone. Works offline once loaded.
 - **Share your creation** with a link — the whole design rides along in the URL,
   no server involved — or save/load it as a JSON file. Your last session is
   auto-restored.
+- **Start fresh** with *New* (a clean single-pivot skeleton to shape from
+  scratch), or **import a trace**: *Load* also accepts
+  [BiKinematics](https://github.com/mark-bak/BiKinematics) side-profile traces
+  and converts them automatically (units, axes, gearing and all), so any bike
+  someone has digitised drops straight in as a — clearly-flagged — estimate.
 
 ## The metrics, in plain English
 
