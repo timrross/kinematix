@@ -58,6 +58,8 @@ interface AppState {
   dragging: boolean;
   /** Zoom multiplier on top of the auto-fit (1 = fit everything in view). */
   zoom: number;
+  /** Pan offset in viewBox units, applied after zoom (0,0 = centred fit). */
+  pan: XY;
 
   // --- build mode ---
   mode: Mode;
@@ -94,6 +96,8 @@ interface AppState {
   setDragging: (d: boolean) => void;
   /** Multiply the current zoom (e.g. 1.25 to zoom in, 0.8 to zoom out). */
   zoomBy: (factor: number) => void;
+  /** Set zoom and pan together — used by pinch-to-zoom about a focal point. */
+  setView: (zoom: number, pan: XY) => void;
   /** Reset to the auto-fit so the whole diagram + photo frame the viewport. */
   fitView: () => void;
 
@@ -147,6 +151,7 @@ export const useStore = create<AppState>((set, get) => {
     showInstantCentre: true,
     dragging: false,
     zoom: 1,
+    pan: { x: 0, y: 0 },
 
     mode: 'tune',
     tool: 'select',
@@ -234,8 +239,13 @@ export const useStore = create<AppState>((set, get) => {
     setAnimPos: (t) => set({ animPos: Math.min(1, Math.max(0, t)) }),
     setActiveMetric: (m) => set({ activeMetric: m }),
     setShowInstantCentre: (s) => set({ showInstantCentre: s }),
-    zoomBy: (factor) => set({ zoom: Math.min(8, Math.max(0.25, get().zoom * factor)) }),
-    fitView: () => set({ zoom: 1 }),
+    zoomBy: (factor) => set((s) => {
+      const zoom = Math.min(8, Math.max(0.25, s.zoom * factor));
+      const k = zoom / s.zoom; // scale pan too so the view-centre point stays put
+      return { zoom, pan: { x: s.pan.x * k, y: s.pan.y * k } };
+    }),
+    setView: (zoom, pan) => set({ zoom: Math.min(8, Math.max(0.25, zoom)), pan }),
+    fitView: () => set({ zoom: 1, pan: { x: 0, y: 0 } }),
     setDragging: (d) => {
       // Snapshot the pre-drag design once, so a whole drag is a single undo.
       if (d && !get().dragging) {

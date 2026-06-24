@@ -30,6 +30,7 @@ export default function App() {
   const showIC = useStore((s) => s.showInstantCentre);
   const dragging = useStore((s) => s.dragging);
   const zoom = useStore((s) => s.zoom);
+  const pan = useStore((s) => s.pan);
   const mode = useStore((s) => s.mode);
   const tool = useStore((s) => s.tool);
   const linkAnchor = useStore((s) => s.linkAnchor);
@@ -41,7 +42,7 @@ export default function App() {
     setDesign, updatePoint, dragRearAxle, setShockStroke, setMetricInputs, selectPoint,
     setSnap, setGridSize, setPlaying, setAnimPos, setActiveMetric, setShowInstantCentre,
     setDragging, addPivot, addLinkBetween, removePivot, removeLinkById, setLinkAnchor,
-    addCalibrationClick, undo, redo, zoomBy, fitView,
+    addCalibrationClick, undo, redo, zoomBy, fitView, setView,
   } = useStore.getState();
 
   const buildMode = mode === 'build';
@@ -151,6 +152,7 @@ export default function App() {
             gridSize={gridSize}
             showInstantCentre={showIC && !buildMode}
             zoom={zoom}
+            pan={pan}
             mode={mode}
             tool={tool}
             linkAnchor={linkAnchor}
@@ -168,6 +170,7 @@ export default function App() {
             onDeleteLink={removeLinkById}
             onSetLinkAnchor={setLinkAnchor}
             onCalibrationClick={addCalibrationClick}
+            onSetView={setView}
           />
           {!buildMode && (
             <AnimationBar

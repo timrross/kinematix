@@ -33,6 +33,7 @@ interface Props {
   gridSize: number;
   showInstantCentre: boolean;
   zoom: number;
+  pan: XY;
   // build mode
   mode: Mode;
   tool: Tool;
@@ -51,6 +52,7 @@ interface Props {
   onDeleteLink: (id: string) => void;
   onSetLinkAnchor: (id: string | null) => void;
   onCalibrationClick: (world: XY) => void;
+  onSetView: (zoom: number, pan: XY) => void;
 }
 
 /** Andrew's monotone-chain convex hull, for the front-triangle silhouette. */
@@ -77,16 +79,20 @@ function convexHull(pts: XY[]): XY[] {
 
 export default function LinkageView(props: Props) {
   const {
-    design, sweep, metrics, frameIndex, selectedId, snap, gridSize, showInstantCentre, zoom,
+    design, sweep, metrics, frameIndex, selectedId, snap, gridSize, showInstantCentre, zoom, pan,
     mode, tool, linkAnchor, trace, calibrating, calibrationFirst,
     onMovePoint, onDragRearAxle, onSelect, onGrabStart, onGrabEnd,
     onAddPivot, onLinkPivots, onDeletePivot, onDeleteLink, onSetLinkAnchor, onCalibrationClick,
+    onSetView,
   } = props;
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<string | null>(null);
   const pendingRef = useRef<{ id: string; x: number; y: number } | null>(null);
   const [rubber, setRubber] = useState<XY | null>(null); // viewBox coords of the link rubber-band end
+  // Active touch pointers (viewBox coords) and the in-flight pinch gesture.
+  const touchesRef = useRef<Map<number, XY>>(new Map());
+  const pinchRef = useRef<{ startDist: number; zoom0: number; b0: XY } | null>(null);
 
   const buildMode = mode === 'build';
   const valid = sweep.structurallyValid && sweep.frames.length > 0;
@@ -131,18 +137,19 @@ export default function LinkageView(props: Props) {
       );
     }
     const base = fitTransform(unionBounds(samples, 40), VIEW_W, VIEW_H);
-    // Apply the user's zoom about the view centre (1 = auto-fit everything).
-    if (zoom === 1) return base;
+    // Apply the user's zoom about the view centre, then the pan offset
+    // (1, {0,0} = auto-fit everything centred).
+    if (zoom === 1 && pan.x === 0 && pan.y === 0) return base;
     const cx = VIEW_W / 2;
     const cy = VIEW_H / 2;
     return {
       ...base,
       scale: base.scale * zoom,
-      offsetX: cx + (base.offsetX - cx) * zoom,
-      offsetY: cy + (base.offsetY - cy) * zoom,
+      offsetX: cx + (base.offsetX - cx) * zoom + pan.x,
+      offsetY: cy + (base.offsetY - cy) * zoom + pan.y,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [design, metrics, trace, zoom]);
+  }, [design, metrics, trace, zoom, pan]);
 
   const S = (p: XY) => worldToScreen(transform, p);
 
@@ -200,6 +207,8 @@ export default function LinkageView(props: Props) {
   // --- unified pointer dispatch ---
   function onPivotDown(e: ReactPointerEvent, id: string) {
     e.preventDefault();
+    // A second finger landing is the start of a pinch, not a pivot action.
+    if (e.pointerType === 'touch' && touchesRef.current.size >= 1) return;
     if (calibrating) { onCalibrationClick(pointerToWorld(e)); return; }
     if (buildMode) {
       if (tool === 'delete') { onDeletePivot(id); return; }
@@ -215,6 +224,7 @@ export default function LinkageView(props: Props) {
   }
 
   function onBgDown(e: ReactPointerEvent) {
+    if (e.pointerType === 'touch' && touchesRef.current.size >= 1) return; // second finger → pinch
     if (calibrating) { onCalibrationClick(pointerToWorld(e)); return; }
     if (!buildMode) return;
     if (tool === 'add') { const w = snapWorld(pointerToWorld(e)); onAddPivot(w.x, w.y); return; }
@@ -222,7 +232,49 @@ export default function LinkageView(props: Props) {
     if (tool === 'select') onSelect(null);
   }
 
+  // --- pinch-to-zoom (two-finger) ---
+  const CX = VIEW_W / 2;
+  const CY = VIEW_H / 2;
+  function twoTouches(): [XY, XY] | null {
+    const pts = [...touchesRef.current.values()];
+    return pts.length >= 2 ? [pts[0], pts[1]] : null;
+  }
+  function beginPinch() {
+    const t = twoTouches();
+    if (!t) return;
+    const [a, b] = t;
+    const c0: XY = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const startDist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+    // Base-space point under the centroid now (invert the live zoom+pan), so we
+    // can keep that point pinned under the fingers as the gesture scales/moves.
+    const b0: XY = { x: CX + (c0.x - CX - pan.x) / zoom, y: CY + (c0.y - CY - pan.y) / zoom };
+    pinchRef.current = { startDist, zoom0: zoom, b0 };
+    // Abandon any single-finger select/drag that may have started.
+    if (dragRef.current) { onGrabEnd(); dragRef.current = null; }
+    pendingRef.current = null;
+  }
+  function updatePinch() {
+    const pr = pinchRef.current;
+    const t = twoTouches();
+    if (!pr || !t) return;
+    const [a, b] = t;
+    const c1: XY = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+    const zoom1 = Math.min(8, Math.max(0.25, pr.zoom0 * (dist / pr.startDist)));
+    const newPan: XY = { x: c1.x - CX - (pr.b0.x - CX) * zoom1, y: c1.y - CY - (pr.b0.y - CY) * zoom1 };
+    onSetView(zoom1, newPan);
+  }
+  function onSvgDown(e: ReactPointerEvent) {
+    if (e.pointerType !== 'touch') return;
+    touchesRef.current.set(e.pointerId, pointerToView(e));
+    if (touchesRef.current.size === 2) beginPinch();
+  }
+
   function onMove(e: ReactPointerEvent) {
+    if (e.pointerType === 'touch' && touchesRef.current.has(e.pointerId)) {
+      touchesRef.current.set(e.pointerId, pointerToView(e));
+      if (pinchRef.current) { e.preventDefault(); updatePinch(); return; }
+    }
     if (buildMode && tool === 'link' && linkAnchor) { setRubber(pointerToView(e)); return; }
     if (dragRef.current) { applyMove(e, dragRef.current); return; }
     const pending = pendingRef.current;
@@ -237,6 +289,10 @@ export default function LinkageView(props: Props) {
     }
   }
   function onUp(e: ReactPointerEvent) {
+    if (e.pointerType === 'touch' && touchesRef.current.has(e.pointerId)) {
+      touchesRef.current.delete(e.pointerId);
+      if (touchesRef.current.size < 2) pinchRef.current = null; // pinch needs two
+    }
     // Linking also completes on release over a different pivot (press-drag).
     if (buildMode && tool === 'link' && linkAnchor) {
       const id = pivotAt(e);
@@ -310,6 +366,7 @@ export default function LinkageView(props: Props) {
       ref={svgRef}
       className={`linkage ${buildMode ? 'build' : ''} ${calibrating ? 'calibrating' : ''}`}
       viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+      onPointerDown={onSvgDown}
       onPointerMove={onMove}
       onPointerUp={onUp}
       onPointerCancel={onUp}
