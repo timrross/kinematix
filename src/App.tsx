@@ -29,6 +29,7 @@ export default function App() {
   const activeMetric = useStore((s) => s.activeMetric);
   const showIC = useStore((s) => s.showInstantCentre);
   const dragging = useStore((s) => s.dragging);
+  const zoom = useStore((s) => s.zoom);
   const mode = useStore((s) => s.mode);
   const tool = useStore((s) => s.tool);
   const linkAnchor = useStore((s) => s.linkAnchor);
@@ -40,7 +41,7 @@ export default function App() {
     setDesign, updatePoint, dragRearAxle, setShockStroke, setMetricInputs, selectPoint,
     setSnap, setGridSize, setPlaying, setAnimPos, setActiveMetric, setShowInstantCentre,
     setDragging, addPivot, addLinkBetween, removePivot, removeLinkById, setLinkAnchor,
-    addCalibrationClick, undo, redo,
+    addCalibrationClick, undo, redo, zoomBy, fitView,
   } = useStore.getState();
 
   const buildMode = mode === 'build';
@@ -126,12 +127,19 @@ export default function App() {
         <section className="stage">
           <div className="stage-toolbar">
             <BuildToolbar />
-            {!buildMode && (
-              <label className="check">
-                <input type="checkbox" checked={showIC} onChange={(e) => setShowInstantCentre(e.target.checked)} />
-                Instant centre
-              </label>
-            )}
+            <div className="stage-toolbar-right">
+              {!buildMode && (
+                <label className="check">
+                  <input type="checkbox" checked={showIC} onChange={(e) => setShowInstantCentre(e.target.checked)} />
+                  Instant centre
+                </label>
+              )}
+              <div className="zoom-controls" role="group" aria-label="Zoom">
+                <button className="zoom-btn" onClick={() => zoomBy(1 / 1.25)} title="Zoom out" aria-label="Zoom out">−</button>
+                <button className="zoom-btn fit" onClick={fitView} title="Fit everything in view">Fit</button>
+                <button className="zoom-btn" onClick={() => zoomBy(1.25)} title="Zoom in" aria-label="Zoom in">+</button>
+              </div>
+            </div>
           </div>
           <LinkageView
             design={design}
@@ -142,6 +150,7 @@ export default function App() {
             snap={snap}
             gridSize={gridSize}
             showInstantCentre={showIC && !buildMode}
+            zoom={zoom}
             mode={mode}
             tool={tool}
             linkAnchor={linkAnchor}

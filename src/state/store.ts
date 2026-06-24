@@ -56,6 +56,8 @@ interface AppState {
   activeMetric: MetricKey;
   showInstantCentre: boolean;
   dragging: boolean;
+  /** Zoom multiplier on top of the auto-fit (1 = fit everything in view). */
+  zoom: number;
 
   // --- build mode ---
   mode: Mode;
@@ -90,6 +92,10 @@ interface AppState {
   setActiveMetric: (m: MetricKey) => void;
   setShowInstantCentre: (s: boolean) => void;
   setDragging: (d: boolean) => void;
+  /** Multiply the current zoom (e.g. 1.25 to zoom in, 0.8 to zoom out). */
+  zoomBy: (factor: number) => void;
+  /** Reset to the auto-fit so the whole diagram + photo frame the viewport. */
+  fitView: () => void;
 
   // build mode
   setMode: (m: Mode) => void;
@@ -140,6 +146,7 @@ export const useStore = create<AppState>((set, get) => {
     activeMetric: 'leverage',
     showInstantCentre: true,
     dragging: false,
+    zoom: 1,
 
     mode: 'tune',
     tool: 'select',
@@ -227,6 +234,8 @@ export const useStore = create<AppState>((set, get) => {
     setAnimPos: (t) => set({ animPos: Math.min(1, Math.max(0, t)) }),
     setActiveMetric: (m) => set({ activeMetric: m }),
     setShowInstantCentre: (s) => set({ showInstantCentre: s }),
+    zoomBy: (factor) => set({ zoom: Math.min(8, Math.max(0.25, get().zoom * factor)) }),
+    fitView: () => set({ zoom: 1 }),
     setDragging: (d) => {
       // Snapshot the pre-drag design once, so a whole drag is a single undo.
       if (d && !get().dragging) {
@@ -321,12 +330,14 @@ export const useStore = create<AppState>((set, get) => {
         set({ calibrationFirst: world }); // first click = the front axle
         return;
       }
-      // Second click = the front tyre's contact patch. The two are one tyre
-      // radius apart, which sets the scale; and we reposition the photo so its
-      // front axle lands exactly on the model's front axle.
+      // Second click = the front tyre's contact patch. It sits directly below
+      // the front axle, so only the VERTICAL drop defines the wheel radius (and
+      // thus the scale). Lock the patch's x to the axle's first click, so a
+      // slightly off-line second click can't skew the radius — and reposition
+      // the photo so its front axle lands exactly on the model's front axle.
       const toPx = (w: XY): XY => ({ x: (trace.originX - w.x) / trace.worldScale, y: (trace.originY - w.y) / trace.worldScale });
       const pxAxle = toPx(calibrationFirst);
-      const pxPatch = toPx(world);
+      const pxPatch = { x: pxAxle.x, y: toPx(world).y };
       const newScale = calibrateScale(pxAxle, pxPatch, get().design.metrics.frontTyreRadius);
       if (newScale <= 0) { set({ calibrating: false, calibrationFirst: null }); return; }
       const { metrics, points, axleId } = get().design;

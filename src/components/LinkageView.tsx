@@ -32,6 +32,7 @@ interface Props {
   snap: boolean;
   gridSize: number;
   showInstantCentre: boolean;
+  zoom: number;
   // build mode
   mode: Mode;
   tool: Tool;
@@ -76,7 +77,7 @@ function convexHull(pts: XY[]): XY[] {
 
 export default function LinkageView(props: Props) {
   const {
-    design, sweep, metrics, frameIndex, selectedId, snap, gridSize, showInstantCentre,
+    design, sweep, metrics, frameIndex, selectedId, snap, gridSize, showInstantCentre, zoom,
     mode, tool, linkAnchor, trace, calibrating, calibrationFirst,
     onMovePoint, onDragRearAxle, onSelect, onGrabStart, onGrabEnd,
     onAddPivot, onLinkPivots, onDeletePivot, onDeleteLink, onSetLinkAnchor, onCalibrationClick,
@@ -117,20 +118,31 @@ export default function LinkageView(props: Props) {
     samples.push({ x: homeAxle.x + rR, y: 0 }, { x: homeAxle.x - rR, y: homeAxle.y + rR });
     samples.push({ x: frontAxle.x + fR, y: 0 }, { x: frontAxle.x - fR, y: frontAxle.y + fR });
     samples.push({ x: homeAxle.x, y: 0 }, { x: frontAxle.x, y: 0 });
-    // Keep a traced photo framed.
+    // Keep a traced photo framed. World x DECREASES across the photo (px0 = the
+    // rear/left edge at the higher x), so its far edge is at originX − w.
     if (trace) {
       const w = trace.imgW * trace.worldScale;
       const h = trace.imgH * trace.worldScale;
       samples.push(
         { x: trace.originX, y: trace.originY },
-        { x: trace.originX + w, y: trace.originY },
+        { x: trace.originX - w, y: trace.originY },
         { x: trace.originX, y: trace.originY - h },
-        { x: trace.originX + w, y: trace.originY - h },
+        { x: trace.originX - w, y: trace.originY - h },
       );
     }
-    return fitTransform(unionBounds(samples, 40), VIEW_W, VIEW_H);
+    const base = fitTransform(unionBounds(samples, 40), VIEW_W, VIEW_H);
+    // Apply the user's zoom about the view centre (1 = auto-fit everything).
+    if (zoom === 1) return base;
+    const cx = VIEW_W / 2;
+    const cy = VIEW_H / 2;
+    return {
+      ...base,
+      scale: base.scale * zoom,
+      offsetX: cx + (base.offsetX - cx) * zoom,
+      offsetY: cy + (base.offsetY - cy) * zoom,
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [design, metrics, trace]);
+  }, [design, metrics, trace, zoom]);
 
   const S = (p: XY) => worldToScreen(transform, p);
 
@@ -406,7 +418,10 @@ export default function LinkageView(props: Props) {
               onPointerDown={(e) => onPivotDown(e, p.id)}
             />
             <circle cx={s.x} cy={s.y} r={selected || anchored ? 9 : 7} className={cls} />
-            {(selected || buildMode) && (
+            {/* Full name only for the focused pivot — in Build mode the compact
+               role badges carry identity, so showing every name at once just
+               clutters the canvas. */}
+            {(selected || anchored) && (
               <text x={s.x + 12} y={s.y - 11} className="pivot-label">{p.name}</text>
             )}
             {role && <text x={s.x + 12} y={s.y + 3} className="role-badge">{role}</text>}

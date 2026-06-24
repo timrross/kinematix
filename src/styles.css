@@ -159,6 +159,15 @@ button { cursor: pointer; }
   padding: 9px 14px 5px; gap: 12px;
 }
 .stage-toolbar .check { font-size: 11px; font-family: var(--mono); letter-spacing: 0.04em; color: var(--graphite); }
+.stage-toolbar-right { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.zoom-controls { display: inline-flex; border: 1px solid var(--hair-2); border-radius: var(--radius); overflow: hidden; }
+.zoom-btn {
+  font-family: var(--mono); font-size: 12px; padding: 5px 11px; min-width: 30px;
+  background: var(--bed-2); color: var(--graphite); border: none;
+}
+.zoom-btn + .zoom-btn { border-left: 1px solid var(--hair-2); }
+.zoom-btn:hover { color: var(--ink); background: #2a2620; }
+.zoom-btn.fit { letter-spacing: 0.06em; }
 
 .linkage {
   width: 100%; height: auto; display: block;
