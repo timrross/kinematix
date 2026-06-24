@@ -6,6 +6,8 @@ start to feel why suspension behaves the way it does.
 
 No account. No backend. Works on a phone. Works offline once loaded.
 
+**▶ Live demo: <https://timrross.github.io/kinematix/>**
+
 > **Who it's for:** curious riders, not engineers. You've heard "leverage ratio"
 > and "anti-squat" but couldn't define them — that's exactly the point. Every
 > number has a one-line plain-English explanation right next to it.
@@ -117,16 +119,26 @@ npm run preview    # serve the production build locally
 
 ## Deploy (free static hosting)
 
-The build is fully static and uses a relative base path, so it drops onto any of
-these with no configuration:
+The build is fully static and uses a relative base path, so it drops onto any
+host with no per-host configuration. The whole app is a single small bundle
+(well under 200 kB, ~60 kB gzipped) so it loads fast on mobile data and runs
+offline once cached.
 
-- **Netlify / Vercel**: point them at the repo; build command `npm run build`,
-  publish directory `dist`.
-- **GitHub Pages**: `npm run build` and publish the `dist/` folder (e.g. with the
-  `gh-pages` package or an Actions workflow).
+**GitHub Pages (automated, this repo).** A workflow at
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) builds the app and
+publishes `dist/` to Pages on every push to `main` (and on manual *Run workflow*
+dispatch). One-time setup in the repo: **Settings → Pages → Build and deployment
+→ Source → GitHub Actions**. After that, pushing to `main` deploys to
+<https://timrross.github.io/kinematix/>.
 
-The whole app is a single small bundle (well under 200 kB, ~60 kB gzipped) so it
-loads fast on mobile data and runs offline once cached.
+**Anywhere else.** Run `npm run build` and serve the resulting `dist/` folder:
+
+- **Netlify / Vercel / Cloudflare Pages**: point them at the repo; build command
+  `npm run build`, publish directory `dist`.
+- **Any static server**: copy `dist/` to the document root.
+
+Routing is hash-based (share links live in `location.hash`), so no SPA
+rewrite/fallback rule is needed — a plain static server is enough.
 
 ## Project layout
 
@@ -157,8 +169,6 @@ Intentionally **not** built yet (and noted here so the scope stays honest):
 
 - A shared online library of real bike models (needs a backend, accounts and
   moderation — the biggest ongoing maintenance burden).
-- Photo upload and trace-the-pivots-on-an-image (parallax and scale error make it
-  unreliable).
 - Six-bar and idler-pulley / high-pivot designs. The solver is general enough not
   to actively prevent these later, but they aren't v1 targets.
 
